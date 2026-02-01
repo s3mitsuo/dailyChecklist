@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日常の実行記録</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 600px;
+            padding: 32px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 24px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .add-item {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .add-item input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .add-item input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .add-item button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .add-item button:hover {
+            background: #5568d3;
+        }
+
+        .clear-all-section {
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .clear-all-btn {
+            padding: 10px 20px;
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .clear-all-btn:hover {
+            background: #f57c00;
+        }
+
+        .item-list {
+            list-style: none;
+        }
+
+        .item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s;
+        }
+
+        .item:hover {
+            background: #f0f1f3;
+        }
+
+        .item.checked {
+            background: #e8f5e9;
+        }
+
+        .item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .item-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .item-text {
+            font-size: 16px;
+            color: #333;
+            transition: all 0.3s;
+        }
+
+        .item.checked .item-text {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .item-timestamp {
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .item-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .order-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .order-btn {
+            padding: 4px 8px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+            line-height: 1;
+        }
+
+        .order-btn:hover {
+            background: #45a049;
+        }
+
+        .order-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .delete-btn {
+            padding: 8px 16px;
+            background: #ff5252;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .delete-btn:hover {
+            background: #ff1744;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✓ 日常の実行記録</h1>
+        
+        <div class="add-item">
+            <input 
+                type="text" 
+                id="itemInput" 
+                placeholder="新しい項目を入力..."
+                autocomplete="off"
+            >
+            <button onclick="addItem()">追加</button>
+        </div>
+
+        <div class="clear-all-section">
+            <button class="clear-all-btn" onclick="clearAllChecks()">全てのチェックをオフにする</button>
+        </div>
+
+        <ul class="item-list" id="itemList"></ul>
+        <div class="empty-state" id="emptyState" style="display: none;">
+            項目がありません。<br>上のフォームから追加してください。
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'dailyChecklistData';
+        let items = [];
+        let nextId = 1;
+
+        // ローカルストレージからデータを読み込む
+        function loadFromStorage() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    const data = JSON.parse(stored);
+                    items = data.items.map(item => ({
+                        ...item,
+                        timestamp: item.timestamp ? new Date(item.timestamp) : null
+                    }));
+                    nextId = data.nextId;
+                } catch (e) {
+                    console.error('データの読み込みに失敗しました:', e);
+                    initializeDefaultItems();
+                }
+            } else {
+                initializeDefaultItems();
+            }
+        }
+
+        // デフォルトの項目を初期化
+        function initializeDefaultItems() {
+            items = [
+                { id: 1, text: '鍵の施錠', checked: false, timestamp: null },
+                { id: 2, text: '窓の施錠', checked: false, timestamp: null },
+                { id: 3, text: '部屋の消灯', checked: false, timestamp: null }
+            ];
+            nextId = 4;
+            saveToStorage();
+        }
+
+        // ローカルストレージにデータを保存する
+        function saveToStorage() {
+            const data = {
+                items: items,
+                nextId: nextId
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function formatTimestamp(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            
+            return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+        }
+
+        function toggleItem(id) {
+            const item = items.find(i => i.id === id);
+            if (item) {
+                item.checked = !item.checked;
+                
+                if (item.checked) {
+                    item.timestamp = new Date();
+                } else {
+                    item.timestamp = null;
+                }
+                
+                saveToStorage();
+                renderItems();
+            }
+        }
+
+        function deleteItem(id) {
+            if (confirm('この項目を削除しますか?')) {
+                items = items.filter(i => i.id !== id);
+                saveToStorage();
+                renderItems();
+            }
+        }
+
+        function moveItemUp(id) {
+            const index = items.findIndex(i => i.id === id);
+            if (index > 0) {
+                // 配列内で要素を入れ替え
+                [items[index - 1], items[index]] = [items[index], items[index - 1]];
+                saveToStorage();
+                renderItems();
+            }
+        }
+
+        function moveItemDown(id) {
+            const index = items.findIndex(i => i.id === id);
+            if (index < items.length - 1) {
+                // 配列内で要素を入れ替え
+                [items[index], items[index + 1]] = [items[index + 1], items[index]];
+                saveToStorage();
+                renderItems();
+            }
+        }
+
+        function clearAllChecks() {
+            if (items.some(i => i.checked)) {
+                if (confirm('全てのチェックをオフにしますか?')) {
+                    items.forEach(item => {
+                        item.checked = false;
+                        item.timestamp = null;
+                    });
+                    saveToStorage();
+                    renderItems();
+                }
+            } else {
+                alert('チェックされている項目がありません。');
+            }
+        }
+
+        function addItem() {
+            const input = document.getElementById('itemInput');
+            const text = input.value.trim();
+            
+            if (text === '') {
+                alert('項目を入力してください');
+                return;
+            }
+            
+            items.push({
+                id: nextId++,
+                text: text,
+                checked: false,
+                timestamp: null
+            });
+            
+            input.value = '';
+            saveToStorage();
+            renderItems();
+        }
+
+        function renderItems() {
+            const itemList = document.getElementById('itemList');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (items.length === 0) {
+                itemList.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            
+            itemList.innerHTML = items.map((item, index) => `
+                <li class="item ${item.checked ? 'checked' : ''}">
+                    <input 
+                        type="checkbox" 
+                        ${item.checked ? 'checked' : ''}
+                        onchange="toggleItem(${item.id})"
+                    >
+                    <div class="item-content">
+                        <div class="item-text">${item.text}</div>
+                        ${item.timestamp ? `<div class="item-timestamp">✓ ${formatTimestamp(item.timestamp)}</div>` : ''}
+                    </div>
+                    <div class="item-buttons">
+                        <div class="order-buttons">
+                            <button 
+                                class="order-btn" 
+                                onclick="moveItemUp(${item.id})"
+                                ${index === 0 ? 'disabled' : ''}
+                                title="上に移動"
+                            >▲</button>
+                            <button 
+                                class="order-btn" 
+                                onclick="moveItemDown(${item.id})"
+                                ${index === items.length - 1 ? 'disabled' : ''}
+                                title="下に移動"
+                            >▼</button>
+                        </div>
+                        <button class="delete-btn" onclick="deleteItem(${item.id})">削除</button>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        // Enterキーで追加
+        document.getElementById('itemInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addItem();
+            }
+        });
+
+        // 初期化: ローカルストレージからデータを読み込んで表示
+        loadFromStorage();
+        renderItems();
+    </script>
+</body>
+</html>
